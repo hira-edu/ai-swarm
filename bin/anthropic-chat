@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+ROOT_DIR="${SCRIPT_DIR%/bin}"
+
+exec python3 "$ROOT_DIR/scripts/ai_chat.py" --provider anthropic "$@"
+

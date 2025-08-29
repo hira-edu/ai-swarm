@@ -1,0 +1,107 @@
+openapi: 3.0.3
+info:
+  title: Coordinator API (MVP)
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /v1/jobs:
+    post:
+      summary: Submit a job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind: { type: string }
+                payload: { type: object }
+              required: [kind]
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  status: { type: string }
+                  kind: { type: string }
+        '400':
+          description: Invalid request
+  /v1/jobs/{id}:
+    get:
+      summary: Get job
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  status: { type: string }
+                  result: { type: object }
+        '404': { description: Not found }
+    delete:
+      summary: Cancel job
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Canceled }
+        '404': { description: Not found }
+  /v1/chat/completions:
+    post:
+      summary: OpenAI-compatible chat completions (proxy)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model: { type: string }
+                messages:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      role: { type: string, enum: [system, user, assistant] }
+                      content: { type: string }
+                temperature: { type: number }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  object: { type: string }
+                  created: { type: integer }
+                  model: { type: string }
+                  choices:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        index: { type: integer }
+                        message:
+                          type: object
+                          properties:
+                            role: { type: string }
+                            content: { type: string }
+                        finish_reason: { type: string }
+

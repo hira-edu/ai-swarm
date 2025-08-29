@@ -1,0 +1,12 @@
+{
+  "xai": { "model": "grok-code-fast-1", "base": "https://api.x.ai/v1" },
+  "google": { "model": "gemini-1.5-pro-latest", "base": "https://generativelanguage.googleapis.com/v1beta" },
+  "anthropic": { "model": "claude-opus-4-1-20250805", "base": "https://api.anthropic.com/v1" },
+  "limits": {
+    "cb_threshold": 2,
+    "cb_cooldown_sec": 60,
+    "tool_max_per_window": 30,
+    "tool_window_sec": 60,
+    "tool_timeout_ms": 8000
+  }
+}

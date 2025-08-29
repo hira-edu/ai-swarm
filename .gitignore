@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+build/
+dist/
+*.egg-info/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Node / frontends (if added later)
+node_modules/
+
+# Editor
+.idea/
+.vscode/
+
