@@ -439,6 +439,7 @@ def main() -> None:
     for r in range(1, args.rounds + 1):
         # Set phase marker in shared context
         context_store["phase"] = r
+        context_store["phase_ready"] = False
         print(f"\n=== Round {r} ===", flush=True)
         rp = round_prompt(task, transcript, r)
         round_outputs: Dict[str, str] = {}
@@ -801,6 +802,9 @@ def main() -> None:
             else:
                 transcript.append({"who": "System", "content": "No valid write decision JSON parsed."})
             pending_writes = []
+
+        # Mark phase ready (simple barrier); agents may also set per-agent ready keys via ctx_put
+        context_store["phase_ready"] = True
 
     # Print telemetry summary
     print("\n=== Telemetry Summary ===")

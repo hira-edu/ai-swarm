@@ -40,6 +40,16 @@ bin/ai-swarm --rounds 2 "Plan a feature and risks"
 - Optional FastAPI server in `src/coordination/server.py`:
   - Job endpoints: `POST/GET/DELETE /v1/jobs`
   - OpenAI‑compatible chat: `POST /v1/chat/completions` (routes to providers by model hint)
+  - Auth (optional): set `COORD_API_TOKEN`; requests must include `Authorization: Bearer <token>`
+
+Quick run
+```
+pip install fastapi uvicorn
+export COORD_API_TOKEN=local-dev-token   # optional
+uvicorn src.coordination.server:app --reload --port 8080
+# Submit a job
+curl -s -X POST localhost:8080/v1/jobs -H 'content-type: application/json' -d '{"kind":"demo","payload":{"x":1}}'
+```
 
 ## Development
 - No external SDKs required for CLI; uses Python stdlib HTTP.
@@ -52,4 +62,3 @@ bin/ai-swarm --rounds 2 "Plan a feature and risks"
 
 ## License
 - Add a license of your choice before publishing (MIT/Apache‑2.0 recommended).
-

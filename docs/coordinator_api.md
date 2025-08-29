@@ -30,8 +30,11 @@ Endpoints
     - 404: { "error": "not_found" }
 
 Authentication (placeholder)
-- Add an Authorization: Bearer <token> header check for non‑local deployments.
-- Return 401 on missing/invalid token.
+- COORD_API_TOKEN: if set in the environment, the server enforces `Authorization: Bearer <token>`.
+- Errors: 401 on missing token, 403 on wrong token.
+- Example:
+  - `export COORD_API_TOKEN=local-dev-token`
+  - `curl -H "Authorization: Bearer local-dev-token" http://localhost:8080/v1/jobs/xyz`
 
 Rate Limiting
 - Return 429 with transparency fields: limit, remaining, reset_sec, scope.
@@ -39,6 +42,7 @@ Rate Limiting
 Notes
 - This MVP pairs with src/coordination/api.py which provides an in‑process stub backing store and helpers.
 - Future: OpenAPI spec, async execution, durable store, and pagination for job listings.
+ - See `docs/openapi.yaml` for a minimal OpenAPI definition of the endpoints.
 
 Error Schema and Status Codes
 - Standard error shape for error responses:
