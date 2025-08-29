@@ -434,6 +434,7 @@ def main() -> None:
     agent_state: Dict[str, Any] = {}
     corr_id = uuid.uuid4().hex[:12]
     context_store: Dict[str, Any] = {}
+    context_versions: Dict[str, int] = {}
 
     for r in range(1, args.rounds + 1):
         # Set phase marker in shared context
@@ -543,14 +544,30 @@ def main() -> None:
                         elif name == "ctx_put":
                             k = str(args_map.get("key", ""))
                             v = args_map.get("value")
-                            context_store[k] = v
-                            transcript.append({"who": f"Tool({a.name})", "content": json.dumps({"ok": True, "key": k}), "meta": {"tool": "ctx_put", "ts": datetime.utcnow().isoformat() + "Z", "corr_id": corr_id}})
-                            telemetry["tool_calls"].append({"tool": "ctx_put", "ok": True, "ms": 0})
-                            print(f"[Tool for {a.name}] ctx_put -> {k}")
+                            mode = str(args_map.get("mode", "set"))
+                            expect = args_map.get("expected_version")
+                            cur_ver = context_versions.get(k, 0)
+                            apply = False
+                            if mode == "set":
+                                apply = True
+                            elif mode == "if_absent":
+                                apply = (k not in context_store)
+                            elif mode == "if_version":
+                                apply = (isinstance(expect, int) and expect == cur_ver)
+                            if apply:
+                                context_store[k] = v
+                                context_versions[k] = cur_ver + 1
+                                result = {"ok": True, "key": k, "version": context_versions[k]}
+                            else:
+                                result = {"ok": False, "key": k, "version": cur_ver, "error": "version_mismatch"}
+                            transcript.append({"who": f"Tool({a.name})", "content": json.dumps(result), "meta": {"tool": "ctx_put", "ts": datetime.utcnow().isoformat() + "Z", "corr_id": corr_id}})
+                            telemetry["tool_calls"].append({"tool": "ctx_put", "ok": bool(result.get("ok")), "ms": 0})
+                            print(f"[Tool for {a.name}] ctx_put -> {k} v{context_versions.get(k,0)}")
                         elif name == "ctx_get":
                             k = str(args_map.get("key", ""))
                             val = context_store.get(k)
-                            transcript.append({"who": f"Tool({a.name})", "content": json.dumps({"key": k, "value": val}), "meta": {"tool": "ctx_get", "ts": datetime.utcnow().isoformat() + "Z", "corr_id": corr_id}})
+                            ver = context_versions.get(k, 0)
+                            transcript.append({"who": f"Tool({a.name})", "content": json.dumps({"key": k, "value": val, "version": ver}), "meta": {"tool": "ctx_get", "ts": datetime.utcnow().isoformat() + "Z", "corr_id": corr_id}})
                             telemetry["tool_calls"].append({"tool": "ctx_get", "ok": True, "ms": 0})
                             print(f"[Tool for {a.name}] ctx_get -> {k}")
                         elif name == "ctx_keys":
@@ -642,6 +659,27 @@ def main() -> None:
                             context_store[qkey] = q
                             transcript.append({"who": f"Tool({a.name})", "content": json.dumps(result), "meta": {"tool": "coord_complete", "ts": datetime.utcnow().isoformat() + "Z", "corr_id": corr_id}})
                             telemetry["tool_calls"].append({"tool": "coord_complete", "ok": True, "ms": 0})
+                        elif name == "coord_extend":
+                            qkey = "coord:queue"
+                            q = context_store.get(qkey) or []
+                            tid = str(args_map.get("id", ""))
+                            extra_sec = int(args_map.get("extend_sec", 120))
+                            now = time.time()
+                            found = next((itm for itm in q if itm.get("id") == tid), None)
+                            if not found:
+                                result = {"error": "not_found", "code": 404}
+                            else:
+                                exp = found.get("lease_until") or 0
+                                if found.get("claimed_by") not in (None, a.name):
+                                    result = {"error": "not_owner", "code": 403}
+                                elif now > exp:
+                                    result = {"error": "expired", "code": 409}
+                                else:
+                                    found["lease_until"] = exp + extra_sec
+                                    result = {"id": found["id"], "lease_until": found["lease_until"]}
+                            context_store[qkey] = q
+                            transcript.append({"who": f"Tool({a.name})", "content": json.dumps(result), "meta": {"tool": "coord_extend", "ts": datetime.utcnow().isoformat() + "Z", "corr_id": corr_id}})
+                            telemetry["tool_calls"].append({"tool": "coord_extend", "ok": True, "ms": 0})
                         elif name == "coord_status":
                             qkey = "coord:queue"
                             q = context_store.get(qkey) or []

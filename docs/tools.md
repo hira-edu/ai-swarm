@@ -37,11 +37,11 @@ Tools
 
 Shared Context
 - ctx_put: store a value in shared context
-  - args: `key` (string), `value` (any JSON)
-  - result: `{ ok: true, key }`
+  - args: `key` (string), `value` (any JSON), `mode` (optional: `set`|`if_absent`|`if_version`), `expected_version` (int for if_version)
+  - result: `{ ok, key, version }` (or `{ ok:false, error:"version_mismatch", version }`)
 - ctx_get: retrieve a value from shared context
   - args: `key` (string)
-  - result: `{ key, value }`
+  - result: `{ key, value, version }`
 - ctx_keys: list context keys
   - args: `prefix` (optional string)
   - result: `{ keys: [ ... ] }`
@@ -70,6 +70,9 @@ Coordinator Queue (MVP)
 - coord_complete: mark a task done
   - args: `id` (string), `result` (any JSON)
   - result: `{ id, status: "done" }` or `{ error, code }`
+- coord_extend: extend lease for claimed task
+  - args: `id` (string), `extend_sec` (int)
+  - result: `{ id, lease_until }` or `{ error, code }`
 
 Quick example (coord)
 - Enqueue:

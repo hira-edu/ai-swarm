@@ -22,11 +22,16 @@ except Exception:
 
 
 def require_auth(authorization: Optional[str]) -> None:
-    # Placeholder: accept missing auth for local; reject obvious junk
-    if authorization is None:
+    # If COORD_API_TOKEN is set, require exact Bearer token match; else allow local use
+    import os
+    expected = os.getenv("COORD_API_TOKEN")
+    if not expected:
         return
-    if not authorization.lower().startswith("bearer "):
+    if authorization is None or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail={"error": "unauthorized", "code": 401})
+    token = authorization.split(" ", 1)[1].strip()
+    if token != expected:
+        raise HTTPException(status_code=403, detail={"error": "forbidden", "code": 403})
 
 
 if FastAPI is not None:
