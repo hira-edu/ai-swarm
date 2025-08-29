@@ -426,6 +426,8 @@ def main() -> None:
     rl_max = int(str(config.get("limits", {}).get("tool_max_per_window", os.getenv("SWARM_TOOL_MAX", 20))))
     rl_window = int(str(config.get("limits", {}).get("tool_window_sec", os.getenv("SWARM_TOOL_WINDOW", 60))))
     tool_timeout_ms = int(str(config.get("limits", {}).get("tool_timeout_ms", os.getenv("SWARM_TOOL_TIMEOUT_MS", 8000))))
+    barrier_require_all = bool(config.get("barrier", {}).get("require_all", os.getenv("SWARM_BARRIER_ALL", "false").lower() == "true"))
+    barrier_wait_ms = int(str(config.get("barrier", {}).get("wait_ms", os.getenv("SWARM_BARRIER_WAIT_MS", 0))))
 
     tools = ToolExecutor(allow_write=args.allow_write, root=".", rate_limit_max=rl_max, rate_window_sec=rl_window, timeout_ms=tool_timeout_ms)
     pending_writes: List[Dict[str, Any]] = []
@@ -693,6 +695,27 @@ def main() -> None:
                             transcript.append({"who": f"Tool({a.name})", "content": json.dumps(status), "meta": {"tool": "coord_status", "ts": datetime.utcnow().isoformat() + "Z", "corr_id": corr_id}})
                             telemetry["tool_calls"].append({"tool": "coord_status", "ok": True, "ms": 0})
                             print(f"[Tool for {a.name}] coord_status -> {status['length']} items")
+                        elif name == "proposal_add":
+                            # Collect improvement proposals under a shared key
+                            payload = args_map.get("proposal")
+                            if not isinstance(payload, dict) or payload.get("type") != "proposal":
+                                raise ValueError("invalid proposal")
+                            proposals = context_store.get("proposals") or []
+                            if not isinstance(proposals, list):
+                                proposals = []
+                            proposals.append({"from": a.name, "at": datetime.utcnow().isoformat() + "Z", **payload})
+                            context_store["proposals"] = proposals
+                            transcript.append({"who": f"Tool({a.name})", "content": json.dumps({"ok": True, "count": len(proposals)}), "meta": {"tool": "proposal_add", "ts": datetime.utcnow().isoformat() + "Z", "corr_id": corr_id}})
+                            telemetry["tool_calls"].append({"tool": "proposal_add", "ok": True, "ms": 0})
+                            print(f"[Tool for {a.name}] proposal_add -> total {len(proposals)}")
+                        elif name == "proposal_list":
+                            proposals = context_store.get("proposals") or []
+                            transcript.append({"who": f"Tool({a.name})", "content": json.dumps({"proposals": proposals}), "meta": {"tool": "proposal_list", "ts": datetime.utcnow().isoformat() + "Z", "corr_id": corr_id}})
+                            telemetry["tool_calls"].append({"tool": "proposal_list", "ok": True, "ms": 0})
+                        elif name == "proposal_clear":
+                            context_store["proposals"] = []
+                            transcript.append({"who": f"Tool({a.name})", "content": json.dumps({"ok": True}), "meta": {"tool": "proposal_clear", "ts": datetime.utcnow().isoformat() + "Z", "corr_id": corr_id}})
+                            telemetry["tool_calls"].append({"tool": "proposal_clear", "ok": True, "ms": 0})
                             transcript.append({"who": f"Tool({a.name})", "content": json.dumps(res), "meta": {"tool": "health_check", "ts": datetime.utcnow().isoformat() + "Z", "corr_id": corr_id}})
                             telemetry["tool_calls"].append({"tool": "health_check", "ok": True, "ms": int((time.time()-t0)*1000)})
                             if key: tool_cache[key] = res
@@ -740,6 +763,17 @@ def main() -> None:
                     print(f"[{a.name}] Circuit breaker opened for {cb_cooldown}s (fails={st['fail']})")
                 agent_state[a.name] = st
                 print(f"[{a.name}] EXCEPTION: {e}")
+
+        # Optional barrier: wait until all agents set phase_ready flags or timeout
+        if barrier_require_all and barrier_wait_ms > 0:
+            # Agents can set ctx_put keys: phase_ready.<AgentName> = true
+            deadline = time.time() + (barrier_wait_ms / 1000.0)
+            required = {a.name for a in agents}
+            while time.time() < deadline:
+                flags = {k for k, v in context_store.items() if k.startswith("phase_ready.") and v is True}
+                if all((f"phase_ready.{name}") in flags for name in required):
+                    break
+                time.sleep(0.05)
 
         # Arbiter consensus
         cp = consensus_prompt(task, round_outputs)

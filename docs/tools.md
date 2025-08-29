@@ -91,9 +91,21 @@ Shared Findings Schema (convention)
 Barriers and Phases
 - Orchestrator sets `phase` in shared context per round.
 - Optionally, agents can set/read `phase_ready` to coordinate progression across rounds.
+- Per-agent barrier (optional): set `ctx_put` keys `phase_ready.<AgentName>=true`. Orchestrator may wait up to `barrier.wait_ms` for all agents when `barrier.require_all=true` in config.
 
 Improvement Proposal Schema (read-only rounds)
 { "type": "proposal", "items": [ { "area": "coordination|observability|safety", "change": "string", "rationale": "string" } ] }
+
+Proposal Collector Tools
+- proposal_add: append a proposal to a shared list
+  - args: `proposal` (object; must include `{type:"proposal", items:[...]}`)
+  - result: `{ ok, count }`
+- proposal_list: retrieve collected proposals
+  - args: none
+  - result: `{ proposals: [...] }`
+- proposal_clear: clear collected proposals
+  - args: none
+  - result: `{ ok: true }`
 
 Best practices for agents
 - Always include a short free‑text rationale in your normal output in addition to tool_calls JSON.
