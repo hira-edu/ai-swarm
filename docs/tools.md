@@ -46,6 +46,14 @@ Shared Context
   - args: `prefix` (optional string)
   - result: `{ keys: [ ... ] }`
 
+Quick example (ctx)
+- Publish finding:
+  { "tool_calls": [ { "name": "ctx_put", "args": { "key": "Gemini.list_code_files", "value": { "ok": true, "task": "list_code_files", "data": ["scripts/ai_swarm.py"], "ts": "2025-01-01T12:00:00Z", "agent": "Gemini" } } } ] }
+- Discover keys:
+  { "tool_calls": [ { "name": "ctx_keys", "args": { "prefix": "Gemini." } } ] }
+- Retrieve:
+  { "tool_calls": [ { "name": "ctx_get", "args": { "key": "Gemini.list_code_files" } } ] }
+
 Coordinator Queue (MVP)
 - coord_enqueue: enqueue a work item for agents
   - args: `kind` (string), `payload` (object)
@@ -62,6 +70,14 @@ Coordinator Queue (MVP)
 - coord_complete: mark a task done
   - args: `id` (string), `result` (any JSON)
   - result: `{ id, status: "done" }` or `{ error, code }`
+
+Quick example (coord)
+- Enqueue:
+  { "tool_calls": [ { "name": "coord_enqueue", "args": { "kind": "scan_docs", "payload": { "dir": "docs" } } } ] }
+- Claim next (180s lease):
+  { "tool_calls": [ { "name": "coord_next", "args": { "lease_sec": 180 } } ] }
+- Complete:
+  { "tool_calls": [ { "name": "coord_complete", "args": { "id": "<task_id>", "result": { "ok": true } } } ] }
 
 Shared Findings Schema (convention)
 - When storing findings in shared context via `ctx_put`, use this shape for consistency:

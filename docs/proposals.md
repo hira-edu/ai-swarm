@@ -32,3 +32,9 @@ Example
   ]
 }
 
+Tool Call Examples
+- Read before write
+  { "tool_calls": [ { "name": "fs_read", "args": { "path": "docs/proposals.md" } } ] }
+
+- Write a small, safe change (full content)
+  { "tool_calls": [ { "name": "fs_write", "args": { "path": "docs/proposals.md", "content": "<entire updated file content>", "create_dirs": true, "allow_overwrite": true } } ] }
